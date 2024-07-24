@@ -58,21 +58,34 @@ def csa(filename, origin, destination, departure_time):
 
     network = Network()
     network.set_stations(df)
-    network.set_connections(df,departure_time)
+    network.set_connections(df, departure_time)
     arrival_time_stations = dict(zip(network.stations, np.inf * np.ones(len(network.stations))))
-    # print(arrival_time_stations)
+    previous_station = dict(zip(network.stations, [None for _ in network.stations]))
+
     if (origin not in network.stations) or (destination not in network.stations):
         print("origin or destination not in network...")
         return -1
     else:
         arrival_time_stations[origin] = departure_time
         for connection in network.connections:
-            if arrival_time_stations[connection.origin] != np.inf:
-                arrival_time_stations[connection.destination] = min(arrival_time_stations[connection.destination],
-                                                                    connection.arrival_time)
-        res = to_time_str(arrival_time_stations[destination])
-        print(f"Solution found: from {origin} at {to_time_str(departure_time)} to {destination} at {res} ",)
-        return res
+            if ((arrival_time_stations[connection.origin] != np.inf) and
+                    (arrival_time_stations[connection.destination] > connection.arrival_time)):
+                arrival_time_stations[connection.destination] = connection.arrival_time
+                previous_station[connection.destination] = connection.origin
+
+        current_station = destination
+        if arrival_time_stations[destination] == np.inf:
+            print(f"No path found from {origin} to {destination}..")
+            return "inf"
+        else:
+            res = to_time_str(arrival_time_stations[destination])
+            path = []
+            while current_station is not None:
+                path.insert(0, current_station)
+                current_station = previous_station[current_station]
+            print(f"Solution found: from {origin} at {to_time_str(departure_time)} to {destination} at {res} ", )
+            print("solution path: ", path)
+            return res
 
 
 origins = ["A", "B", "C", "E", "G"]
@@ -91,6 +104,6 @@ for i in range(len(test_cases_df)):
     test_case = test_cases_df.iloc[i]
     res = csa(FILENAME, test_case.origin, test_case.destination, test_case.departure_time)
     if res == test_case.expected_arrival_time:
-        print("Good arrival time found !")
+        print("Good solution found !")
     else:
         print(f"Wrong arrival time: expected: {test_case.expected_arrival_time}  actual: {res}")
